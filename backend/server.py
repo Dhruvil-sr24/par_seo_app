@@ -250,15 +250,19 @@ async def run_lighthouse_analysis(url: str) -> Dict[str, Any]:
         try:
             print("Attempting simplified lighthouse analysis...")
             
-            # Try a simpler lighthouse command
+            # Try a simpler lighthouse command optimized for containerized environment
             simple_cmd = [
                 'lighthouse',
                 url,
                 '--output=json',
                 '--output-path=' + temp_file,
-                '--chrome-flags=--headless --no-sandbox --disable-dev-shm-usage',
+                '--chrome-flags=--headless --no-sandbox --disable-dev-shm-usage --disable-gpu --disable-web-security --disable-features=VizDisplayCompositor',
                 '--only-categories=performance,seo,accessibility,best-practices',
-                '--skip-audits=screenshot-thumbnails,final-screenshot'
+                '--skip-audits=screenshot-thumbnails,final-screenshot,uses-http2,uses-long-cache-ttl,uses-optimized-images',
+                '--preset=perf',
+                '--throttling-method=simulate',
+                '--max-wait-for-fcp=10000',
+                '--max-wait-for-load=25000'
             ]
             
             process = await asyncio.create_subprocess_exec(
