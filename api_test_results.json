@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-07-08T07:18:33.065382",
+  "timestamp": "2025-07-08T07:19:31.822204",
   "tests_run": 5,
   "tests_passed": 1,
   "results": {
@@ -9,23 +9,23 @@
     },
     "Get All Analyses": {
       "status": "FAILED",
-      "response_code": 502,
-      "error": "Expected 200, got 502"
+      "response_code": 500,
+      "error": "Expected 200, got 500"
     },
     "Analyze Website": {
       "status": "FAILED",
-      "response_code": 502,
-      "error": "Expected 200, got 502"
+      "response_code": 500,
+      "error": "Expected 200, got 500"
     },
     "Competitor Analysis": {
       "status": "FAILED",
-      "response_code": 502,
-      "error": "Expected 200, got 502"
+      "response_code": 500,
+      "error": "Expected 200, got 500"
     },
     "SEO Content Template": {
       "status": "FAILED",
-      "response_code": 502,
-      "error": "Expected 200, got 502"
+      "response_code": 500,
+      "error": "Expected 200, got 500"
     }
   },
   "analysis_sample": null,
