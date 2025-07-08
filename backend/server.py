@@ -375,6 +375,259 @@ async def analyze_backlinks(url: str) -> List[str]:
         print(f"Backlink analysis failed: {str(e)}")
         return []
 
+def extract_performance_issues(lighthouse_score: Dict[str, Any]) -> List[str]:
+    """Extract specific performance issues from lighthouse data"""
+    issues = []
+    audits = lighthouse_score.get('audits', {})
+    
+    # Check First Contentful Paint
+    fcp = audits.get('first-contentful-paint', {})
+    if fcp.get('numericValue', 0) > 2000:
+        issues.append(f"First Contentful Paint is slow ({fcp.get('numericValue', 0)}ms)")
+    
+    # Check Largest Contentful Paint
+    lcp = audits.get('largest-contentful-paint', {})
+    if lcp.get('numericValue', 0) > 2500:
+        issues.append(f"Largest Contentful Paint is slow ({lcp.get('numericValue', 0)}ms)")
+    
+    # Check Speed Index
+    si = audits.get('speed-index', {})
+    if si.get('numericValue', 0) > 3000:
+        issues.append(f"Speed Index is slow ({si.get('numericValue', 0)}ms)")
+    
+    # Check Cumulative Layout Shift
+    cls = audits.get('cumulative-layout-shift', {})
+    if cls.get('numericValue', 0) > 0.1:
+        issues.append(f"Cumulative Layout Shift is high ({cls.get('numericValue', 0)})")
+    
+    # Check unused CSS
+    unused_css = audits.get('unused-css-rules', {})
+    if unused_css.get('details', {}).get('overallSavingsBytes', 0) > 10000:
+        issues.append("Unused CSS detected - remove unused styles")
+    
+    # Check image optimization
+    image_optimization = audits.get('uses-optimized-images', {})
+    if image_optimization.get('score', 1) < 0.8:
+        issues.append("Images are not optimized - compress and serve in modern formats")
+    
+    return issues
+
+def extract_seo_issues(lighthouse_score: Dict[str, Any]) -> List[str]:
+    """Extract specific SEO issues from lighthouse data"""
+    issues = []
+    audits = lighthouse_score.get('audits', {})
+    
+    # Check meta description
+    meta_desc = audits.get('meta-description', {})
+    if meta_desc.get('score', 1) < 1:
+        issues.append("Missing or poor meta description")
+    
+    # Check title tag
+    title_tag = audits.get('document-title', {})
+    if title_tag.get('score', 1) < 1:
+        issues.append("Missing or poor title tag")
+    
+    # Check headings
+    headings = audits.get('heading-order', {})
+    if headings.get('score', 1) < 1:
+        issues.append("Heading elements are not in sequentially-descending order")
+    
+    # Check alt text
+    alt_text = audits.get('image-alt', {})
+    if alt_text.get('score', 1) < 1:
+        issues.append("Images missing alt text")
+    
+    # Check robots.txt
+    robots = audits.get('robots-txt', {})
+    if robots.get('score', 1) < 1:
+        issues.append("robots.txt issues detected")
+    
+    # Check hreflang
+    hreflang = audits.get('hreflang', {})
+    if hreflang.get('score', 1) < 1:
+        issues.append("hreflang links are not valid")
+    
+    return issues
+
+def extract_accessibility_issues(lighthouse_score: Dict[str, Any]) -> List[str]:
+    """Extract specific accessibility issues from lighthouse data"""
+    issues = []
+    audits = lighthouse_score.get('audits', {})
+    
+    # Check color contrast
+    color_contrast = audits.get('color-contrast', {})
+    if color_contrast.get('score', 1) < 1:
+        issues.append("Background and foreground colors do not have sufficient contrast ratio")
+    
+    # Check aria labels
+    aria_labels = audits.get('aria-required-attr', {})
+    if aria_labels.get('score', 1) < 1:
+        issues.append("ARIA attributes are missing or invalid")
+    
+    # Check form labels
+    form_labels = audits.get('label', {})
+    if form_labels.get('score', 1) < 1:
+        issues.append("Form elements do not have associated labels")
+    
+    # Check keyboard navigation
+    keyboard_nav = audits.get('keyboard-traps', {})
+    if keyboard_nav.get('score', 1) < 1:
+        issues.append("Keyboard navigation issues detected")
+    
+    # Check focus order
+    focus_order = audits.get('focus-traps', {})
+    if focus_order.get('score', 1) < 1:
+        issues.append("Focus is not trapped within modal dialogs")
+    
+    return issues
+
+def extract_best_practices_issues(lighthouse_score: Dict[str, Any]) -> List[str]:
+    """Extract specific best practices issues from lighthouse data"""
+    issues = []
+    audits = lighthouse_score.get('audits', {})
+    
+    # Check HTTPS
+    https = audits.get('is-on-https', {})
+    if https.get('score', 1) < 1:
+        issues.append("Page is not served over HTTPS")
+    
+    # Check JavaScript errors
+    js_errors = audits.get('errors-in-console', {})
+    if js_errors.get('score', 1) < 1:
+        issues.append("JavaScript errors detected in console")
+    
+    # Check deprecated APIs
+    deprecated_apis = audits.get('deprecations', {})
+    if deprecated_apis.get('score', 1) < 1:
+        issues.append("Uses deprecated APIs")
+    
+    # Check content security policy
+    csp = audits.get('csp-xss', {})
+    if csp.get('score', 1) < 1:
+        issues.append("Content Security Policy missing or ineffective")
+    
+    return issues
+
+async def generate_structured_ai_suggestions(url: str, lighthouse_score: Dict[str, Any], keywords: List[str], backlinks: List[str], performance_issues: List[str], seo_issues: List[str], accessibility_issues: List[str], best_practices_issues: List[str]) -> Dict[str, Any]:
+    """Generate structured AI suggestions for each metric"""
+    try:
+        if not GEMINI_API_KEY:
+            return {
+                "performance": {"suggestions": ["AI suggestions unavailable: Gemini API key not configured"], "priority": "high"},
+                "seo": {"suggestions": ["AI suggestions unavailable: Gemini API key not configured"], "priority": "high"},
+                "accessibility": {"suggestions": ["AI suggestions unavailable: Gemini API key not configured"], "priority": "medium"},
+                "best_practices": {"suggestions": ["AI suggestions unavailable: Gemini API key not configured"], "priority": "medium"}
+            }
+        
+        # Create Gemini chat instance
+        chat = LlmChat(
+            api_key=GEMINI_API_KEY,
+            session_id=f"seo_analysis_{uuid.uuid4()}",
+            system_message="You are an expert SEO consultant and web performance specialist. Provide specific, actionable recommendations for each metric category."
+        ).with_model("gemini", "gemini-2.0-flash")
+        
+        # Generate suggestions for each metric
+        suggestions = {}
+        
+        # Performance suggestions
+        performance_prompt = f"""
+        Analyze the performance issues for {url} and provide specific actionable recommendations:
+        
+        Current Performance Score: {lighthouse_score.get('performance', 0):.2f}
+        
+        Identified Issues:
+        {chr(10).join(performance_issues) if performance_issues else "No specific issues identified"}
+        
+        Performance Metrics:
+        - First Contentful Paint: {lighthouse_score.get('audits', {}).get('first-contentful-paint', {}).get('numericValue', 0)}ms
+        - Speed Index: {lighthouse_score.get('audits', {}).get('speed-index', {}).get('numericValue', 0)}ms
+        - Largest Contentful Paint: {lighthouse_score.get('audits', {}).get('largest-contentful-paint', {}).get('numericValue', 0)}ms
+        
+        Provide 3-5 specific, actionable recommendations to improve performance. Focus on technical solutions.
+        """
+        
+        performance_response = await chat.send_message(UserMessage(text=performance_prompt))
+        suggestions["performance"] = {
+            "suggestions": [suggestion.strip() for suggestion in performance_response.split('\n') if suggestion.strip() and not suggestion.strip().startswith('#')],
+            "priority": "high" if lighthouse_score.get('performance', 0) < 0.7 else "medium",
+            "current_score": lighthouse_score.get('performance', 0),
+            "issues": performance_issues
+        }
+        
+        # SEO suggestions
+        seo_prompt = f"""
+        Analyze the SEO issues for {url} and provide specific actionable recommendations:
+        
+        Current SEO Score: {lighthouse_score.get('seo', 0):.2f}
+        
+        Identified Issues:
+        {chr(10).join(seo_issues) if seo_issues else "No specific issues identified"}
+        
+        Top Keywords Found: {', '.join(keywords[:10])}
+        External Links: {len(backlinks)} found
+        
+        Provide 3-5 specific, actionable SEO recommendations. Include keyword optimization strategies.
+        """
+        
+        seo_response = await chat.send_message(UserMessage(text=seo_prompt))
+        suggestions["seo"] = {
+            "suggestions": [suggestion.strip() for suggestion in seo_response.split('\n') if suggestion.strip() and not suggestion.strip().startswith('#')],
+            "priority": "high" if lighthouse_score.get('seo', 0) < 0.8 else "medium",
+            "current_score": lighthouse_score.get('seo', 0),
+            "issues": seo_issues
+        }
+        
+        # Accessibility suggestions
+        accessibility_prompt = f"""
+        Analyze the accessibility issues for {url} and provide specific actionable recommendations:
+        
+        Current Accessibility Score: {lighthouse_score.get('accessibility', 0):.2f}
+        
+        Identified Issues:
+        {chr(10).join(accessibility_issues) if accessibility_issues else "No specific issues identified"}
+        
+        Provide 3-5 specific, actionable accessibility recommendations to improve user experience for all users.
+        """
+        
+        accessibility_response = await chat.send_message(UserMessage(text=accessibility_prompt))
+        suggestions["accessibility"] = {
+            "suggestions": [suggestion.strip() for suggestion in accessibility_response.split('\n') if suggestion.strip() and not suggestion.strip().startswith('#')],
+            "priority": "medium" if lighthouse_score.get('accessibility', 0) < 0.8 else "low",
+            "current_score": lighthouse_score.get('accessibility', 0),
+            "issues": accessibility_issues
+        }
+        
+        # Best Practices suggestions
+        best_practices_prompt = f"""
+        Analyze the best practices issues for {url} and provide specific actionable recommendations:
+        
+        Current Best Practices Score: {lighthouse_score.get('best_practices', 0):.2f}
+        
+        Identified Issues:
+        {chr(10).join(best_practices_issues) if best_practices_issues else "No specific issues identified"}
+        
+        Provide 3-5 specific, actionable recommendations to improve web development best practices.
+        """
+        
+        best_practices_response = await chat.send_message(UserMessage(text=best_practices_prompt))
+        suggestions["best_practices"] = {
+            "suggestions": [suggestion.strip() for suggestion in best_practices_response.split('\n') if suggestion.strip() and not suggestion.strip().startswith('#')],
+            "priority": "medium" if lighthouse_score.get('best_practices', 0) < 0.8 else "low",
+            "current_score": lighthouse_score.get('best_practices', 0),
+            "issues": best_practices_issues
+        }
+        
+        return suggestions
+        
+    except Exception as e:
+        print(f"Structured AI suggestions generation failed: {str(e)}")
+        return {
+            "performance": {"suggestions": [f"AI suggestions unavailable: {str(e)}"], "priority": "high"},
+            "seo": {"suggestions": [f"AI suggestions unavailable: {str(e)}"], "priority": "high"},
+            "accessibility": {"suggestions": [f"AI suggestions unavailable: {str(e)}"], "priority": "medium"},
+            "best_practices": {"suggestions": [f"AI suggestions unavailable: {str(e)}"], "priority": "medium"}
+        }
+
 async def generate_ai_suggestions(url: str, lighthouse_score: Dict[str, Any], keywords: List[str], backlinks: List[str]) -> str:
     """Generate AI-powered SEO suggestions using Gemini"""
     try:
