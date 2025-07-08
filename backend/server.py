@@ -751,6 +751,409 @@ def calculate_performance_metrics(lighthouse_score: Dict[str, Any], keywords_cou
         "seo_score": lighthouse_score.get('seo', 0)
     }
 
+@app.post("/api/competitor-analysis", response_model=CompetitorAnalysisResponse)
+async def analyze_competitors(request: CompetitorAnalysisRequest):
+    """
+    Analyze competitors and provide comparative insights
+    """
+    try:
+        primary_url = str(request.primary_url)
+        competitor_urls = [str(url) for url in request.competitor_urls]
+        analysis_id = str(uuid.uuid4())
+        
+        # Analyze primary site
+        primary_analysis = await analyze_single_site_for_comparison(primary_url)
+        
+        # Analyze competitors
+        competitor_data = []
+        for competitor_url in competitor_urls:
+            competitor_analysis = await analyze_single_site_for_comparison(competitor_url)
+            competitor_data.append(competitor_analysis)
+        
+        # Generate competitive insights
+        comparison_insights = await generate_competitive_insights(primary_analysis, competitor_data)
+        
+        # Extract competitive keywords
+        competitive_keywords = extract_competitive_keywords(primary_analysis, competitor_data)
+        
+        # Identify content gaps
+        content_gaps = identify_content_gaps(primary_analysis, competitor_data)
+        
+        # Store results
+        result = {
+            "_id": analysis_id,
+            "primary_url": primary_url,
+            "competitor_data": competitor_data,
+            "comparison_insights": comparison_insights,
+            "competitive_keywords": competitive_keywords,
+            "content_gaps": content_gaps,
+            "created_at": datetime.utcnow()
+        }
+        
+        await db.competitor_analyses.insert_one(result)
+        
+        return CompetitorAnalysisResponse(
+            id=analysis_id,
+            primary_url=primary_url,
+            competitor_data=competitor_data,
+            comparison_insights=comparison_insights,
+            competitive_keywords=competitive_keywords,
+            content_gaps=content_gaps,
+            created_at=result["created_at"]
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Competitor analysis failed: {str(e)}")
+
+@app.post("/api/seo-content-template", response_model=SEOContentTemplateResponse)
+async def generate_seo_content_template(request: SEOContentTemplateRequest):
+    """
+    Generate SEO content template similar to SEMrush
+    """
+    try:
+        url = str(request.url)
+        target_keywords = request.target_keywords
+        content_type = request.content_type
+        template_id = str(uuid.uuid4())
+        
+        # Analyze the current page
+        current_analysis = await analyze_single_site_for_comparison(url)
+        
+        # Generate content template
+        content_template = await generate_content_template(url, target_keywords, content_type, current_analysis)
+        
+        # Generate keyword strategy
+        keyword_strategy = await generate_keyword_strategy(target_keywords, current_analysis)
+        
+        # Generate content outline
+        content_outline = await generate_content_outline(url, target_keywords, content_type)
+        
+        # Store results
+        result = {
+            "_id": template_id,
+            "url": url,
+            "content_template": content_template,
+            "keyword_strategy": keyword_strategy,
+            "content_outline": content_outline,
+            "created_at": datetime.utcnow()
+        }
+        
+        await db.content_templates.insert_one(result)
+        
+        return SEOContentTemplateResponse(
+            id=template_id,
+            url=url,
+            content_template=content_template,
+            keyword_strategy=keyword_strategy,
+            content_outline=content_outline,
+            created_at=result["created_at"]
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Content template generation failed: {str(e)}")
+
+async def analyze_single_site_for_comparison(url: str) -> Dict[str, Any]:
+    """Analyze a single site for competitive comparison"""
+    try:
+        # Run basic analysis
+        keywords = await analyze_keywords(url)
+        backlinks = await analyze_backlinks(url)
+        
+        # Get basic page info
+        response = requests.get(url, timeout=10)
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        title = soup.find('title')
+        title_text = title.get_text() if title else ""
+        
+        meta_desc = soup.find('meta', attrs={'name': 'description'})
+        meta_desc_text = meta_desc.get('content', '') if meta_desc else ""
+        
+        # Get headings
+        headings = {
+            'h1': [h.get_text().strip() for h in soup.find_all('h1')],
+            'h2': [h.get_text().strip() for h in soup.find_all('h2')],
+            'h3': [h.get_text().strip() for h in soup.find_all('h3')]
+        }
+        
+        return {
+            "url": url,
+            "title": title_text,
+            "meta_description": meta_desc_text,
+            "keywords": keywords,
+            "backlinks": backlinks,
+            "headings": headings,
+            "word_count": len(soup.get_text().split()),
+            "internal_links": len([link for link in soup.find_all('a', href=True) if not link['href'].startswith('http')])
+        }
+        
+    except Exception as e:
+        print(f"Site analysis failed for {url}: {str(e)}")
+        return {
+            "url": url,
+            "title": "",
+            "meta_description": "",
+            "keywords": [],
+            "backlinks": [],
+            "headings": {"h1": [], "h2": [], "h3": []},
+            "word_count": 0,
+            "internal_links": 0,
+            "error": str(e)
+        }
+
+async def generate_competitive_insights(primary_analysis: Dict[str, Any], competitor_data: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Generate competitive insights using AI"""
+    try:
+        if not GEMINI_API_KEY:
+            return {"insights": ["AI insights unavailable: Gemini API key not configured"]}
+        
+        chat = LlmChat(
+            api_key=GEMINI_API_KEY,
+            session_id=f"competitive_analysis_{uuid.uuid4()}",
+            system_message="You are a competitive analysis expert. Provide actionable insights based on comparative data."
+        ).with_model("gemini", "gemini-2.0-flash")
+        
+        # Prepare comparison data
+        comparison_data = f"""
+        Primary Site: {primary_analysis['url']}
+        - Title: {primary_analysis['title']}
+        - Meta Description: {primary_analysis['meta_description']}
+        - Keywords: {len(primary_analysis['keywords'])} found
+        - Backlinks: {len(primary_analysis['backlinks'])} found
+        - Word Count: {primary_analysis['word_count']}
+        - H1 tags: {len(primary_analysis['headings']['h1'])}
+        
+        Competitors:
+        """
+        
+        for i, competitor in enumerate(competitor_data, 1):
+            comparison_data += f"""
+        Competitor {i}: {competitor['url']}
+        - Title: {competitor['title']}
+        - Meta Description: {competitor['meta_description']}
+        - Keywords: {len(competitor['keywords'])} found
+        - Backlinks: {len(competitor['backlinks'])} found
+        - Word Count: {competitor['word_count']}
+        - H1 tags: {len(competitor['headings']['h1'])}
+        """
+        
+        prompt = f"""
+        Analyze the following competitive data and provide actionable insights:
+
+        {comparison_data}
+
+        Provide specific recommendations for:
+        1. Content gaps and opportunities
+        2. Keyword strategy improvements
+        3. Technical SEO advantages competitors have
+        4. Content length and structure recommendations
+        5. Link building opportunities
+
+        Focus on actionable insights that can be implemented immediately.
+        """
+        
+        response = await chat.send_message(UserMessage(text=prompt))
+        
+        return {
+            "insights": [insight.strip() for insight in response.split('\n') if insight.strip() and not insight.strip().startswith('#')],
+            "competitor_count": len(competitor_data),
+            "analysis_date": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        print(f"Competitive insights generation failed: {str(e)}")
+        return {"insights": [f"AI insights unavailable: {str(e)}"]}
+
+def extract_competitive_keywords(primary_analysis: Dict[str, Any], competitor_data: List[Dict[str, Any]]) -> List[str]:
+    """Extract competitive keywords that competitors are using but primary site is not"""
+    try:
+        primary_keywords = set(primary_analysis['keywords'])
+        competitor_keywords = set()
+        
+        for competitor in competitor_data:
+            competitor_keywords.update(competitor['keywords'])
+        
+        # Find keywords competitors have but primary site doesn't
+        competitive_keywords = list(competitor_keywords - primary_keywords)
+        
+        return competitive_keywords[:20]  # Return top 20
+        
+    except Exception as e:
+        print(f"Competitive keywords extraction failed: {str(e)}")
+        return []
+
+def identify_content_gaps(primary_analysis: Dict[str, Any], competitor_data: List[Dict[str, Any]]) -> List[str]:
+    """Identify content gaps based on competitor analysis"""
+    try:
+        gaps = []
+        
+        # Check word count
+        primary_word_count = primary_analysis['word_count']
+        avg_competitor_word_count = sum(c['word_count'] for c in competitor_data) / len(competitor_data)
+        
+        if primary_word_count < avg_competitor_word_count:
+            gaps.append(f"Content length gap: Your page has {primary_word_count} words vs competitor average of {avg_competitor_word_count:.0f} words")
+        
+        # Check heading structure
+        primary_h1_count = len(primary_analysis['headings']['h1'])
+        primary_h2_count = len(primary_analysis['headings']['h2'])
+        
+        if primary_h1_count == 0:
+            gaps.append("Missing H1 tag - critical for SEO")
+        if primary_h2_count < 3:
+            gaps.append("Few H2 tags - consider adding more section headings")
+        
+        # Check meta description
+        if not primary_analysis['meta_description']:
+            gaps.append("Missing meta description")
+        
+        return gaps
+        
+    except Exception as e:
+        print(f"Content gaps identification failed: {str(e)}")
+        return []
+
+async def generate_content_template(url: str, target_keywords: List[str], content_type: str, current_analysis: Dict[str, Any]) -> Dict[str, Any]:
+    """Generate content template similar to SEMrush"""
+    try:
+        if not GEMINI_API_KEY:
+            return {"template": "AI template unavailable: Gemini API key not configured"}
+        
+        chat = LlmChat(
+            api_key=GEMINI_API_KEY,
+            session_id=f"content_template_{uuid.uuid4()}",
+            system_message="You are an expert content strategist. Create detailed content templates for SEO optimization."
+        ).with_model("gemini", "gemini-2.0-flash")
+        
+        prompt = f"""
+        Create a comprehensive content template for {content_type} optimization:
+
+        Target URL: {url}
+        Target Keywords: {', '.join(target_keywords)}
+        Content Type: {content_type}
+        
+        Current Analysis:
+        - Title: {current_analysis['title']}
+        - Meta Description: {current_analysis['meta_description']}
+        - Current Word Count: {current_analysis['word_count']}
+        
+        Provide a detailed template including:
+        1. Recommended title structure with target keywords
+        2. Meta description template
+        3. Content structure with H1, H2, H3 recommendations
+        4. Keyword density and placement guidelines
+        5. Content length recommendations
+        6. Internal linking strategy
+        7. Call-to-action placement
+        8. Technical SEO elements to include
+        
+        Format as a detailed guide that can be followed step by step.
+        """
+        
+        response = await chat.send_message(UserMessage(text=prompt))
+        
+        return {
+            "template": response,
+            "target_keywords": target_keywords,
+            "content_type": content_type,
+            "recommended_length": "1500-2500 words" if content_type == "article" else "800-1200 words",
+            "generated_at": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        print(f"Content template generation failed: {str(e)}")
+        return {"template": f"Template generation failed: {str(e)}"}
+
+async def generate_keyword_strategy(target_keywords: List[str], current_analysis: Dict[str, Any]) -> Dict[str, Any]:
+    """Generate keyword strategy recommendations"""
+    try:
+        if not GEMINI_API_KEY:
+            return {"strategy": "AI strategy unavailable: Gemini API key not configured"}
+        
+        chat = LlmChat(
+            api_key=GEMINI_API_KEY,
+            session_id=f"keyword_strategy_{uuid.uuid4()}",
+            system_message="You are an SEO keyword strategy expert. Provide detailed keyword optimization strategies."
+        ).with_model("gemini", "gemini-2.0-flash")
+        
+        prompt = f"""
+        Create a comprehensive keyword strategy:
+
+        Target Keywords: {', '.join(target_keywords)}
+        Current Page Keywords: {', '.join(current_analysis['keywords'][:10])}
+        
+        Provide:
+        1. Primary keyword selection and placement
+        2. Secondary keyword opportunities
+        3. Long-tail keyword suggestions
+        4. Keyword density recommendations
+        5. LSI (Latent Semantic Indexing) keywords
+        6. Keyword mapping for different content sections
+        7. Seasonal keyword opportunities
+        8. Local SEO keywords (if applicable)
+        
+        Focus on actionable, specific recommendations.
+        """
+        
+        response = await chat.send_message(UserMessage(text=prompt))
+        
+        return {
+            "strategy": response,
+            "primary_keywords": target_keywords[:3],
+            "secondary_keywords": target_keywords[3:],
+            "generated_at": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        print(f"Keyword strategy generation failed: {str(e)}")
+        return {"strategy": f"Strategy generation failed: {str(e)}"}
+
+async def generate_content_outline(url: str, target_keywords: List[str], content_type: str) -> Dict[str, Any]:
+    """Generate detailed content outline"""
+    try:
+        if not GEMINI_API_KEY:
+            return {"outline": "AI outline unavailable: Gemini API key not configured"}
+        
+        chat = LlmChat(
+            api_key=GEMINI_API_KEY,
+            session_id=f"content_outline_{uuid.uuid4()}",
+            system_message="You are a content strategist specialized in creating SEO-optimized content outlines."
+        ).with_model("gemini", "gemini-2.0-flash")
+        
+        prompt = f"""
+        Create a detailed content outline for {content_type}:
+
+        Target URL: {url}
+        Target Keywords: {', '.join(target_keywords)}
+        Content Type: {content_type}
+        
+        Create a comprehensive outline with:
+        1. Introduction section (with primary keyword)
+        2. Main content sections (5-7 sections)
+        3. Subheadings for each section
+        4. Key points to cover in each section
+        5. Keyword placement recommendations
+        6. Internal linking opportunities
+        7. Conclusion section
+        8. Call-to-action recommendations
+        
+        Format as a structured outline that can be followed by content writers.
+        """
+        
+        response = await chat.send_message(UserMessage(text=prompt))
+        
+        return {
+            "outline": response,
+            "target_keywords": target_keywords,
+            "content_type": content_type,
+            "estimated_sections": 7,
+            "generated_at": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        print(f"Content outline generation failed: {str(e)}")
+        return {"outline": f"Outline generation failed: {str(e)}"}
+
 @app.get("/api/analysis/{analysis_id}")
 async def get_analysis(analysis_id: str):
     """Get analysis results by ID"""
