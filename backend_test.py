@@ -46,8 +46,11 @@ class SEOToolAPITester:
                     "error": f"Expected {expected_status}, got {response.status_code}"
                 }
                 try:
-                    return success, response.json()
+                    error_response = response.json()
+                    print(f"Error response: {error_response}")
+                    return success, error_response
                 except:
+                    print(f"Raw response: {response.text[:500]}")
                     return success, {}
 
         except Exception as e:
@@ -119,6 +122,14 @@ class SEOToolAPITester:
             }
             return False
             
+        if "AI suggestions unavailable" in ai_suggestions:
+            print("❌ Failed - AI suggestions unavailable: " + ai_suggestions)
+            self.test_results["AI Suggestions"] = {
+                "status": "FAILED",
+                "error": ai_suggestions
+            }
+            return False
+            
         # Check if it looks like actual AI-generated content
         if len(ai_suggestions) > 100:
             print("✅ Passed - AI suggestions generated successfully")
@@ -154,11 +165,19 @@ class SEOToolAPITester:
         devices = [s.get("device") for s in screenshots]
         print(f"Found screenshots for devices: {', '.join(devices)}")
         
+        # Check for expected devices
+        expected_devices = ["Mobile", "Tablet", "Laptop", "Desktop"]
+        missing_devices = [device for device in expected_devices if device not in devices]
+        if missing_devices:
+            print(f"⚠️ Warning - Missing screenshots for devices: {', '.join(missing_devices)}")
+        
         # Check if screenshots have actual image data
         valid_screenshots = 0
         for screenshot in screenshots:
             if screenshot.get("screenshot", "").startswith("data:image"):
                 valid_screenshots += 1
+            elif "error" in screenshot:
+                print(f"⚠️ Screenshot error for {screenshot.get('device')}: {screenshot.get('error')}")
                 
         if valid_screenshots == 0:
             print("❌ Failed - No valid screenshot data found")
@@ -175,7 +194,8 @@ class SEOToolAPITester:
             print("✅ Passed - Screenshots generated successfully")
             self.tests_passed += 1
             self.test_results["Screenshots"] = {
-                "status": "PASSED"
+                "status": "PASSED",
+                "details": f"Generated {valid_screenshots}/{len(screenshots)} screenshots"
             }
             return True
         else:
@@ -183,6 +203,29 @@ class SEOToolAPITester:
             self.test_results["Screenshots"] = {
                 "status": "FAILED",
                 "error": f"Only {valid_screenshots}/{len(screenshots)} screenshots were valid"
+            }
+            return False
+    
+    def check_performance(self, start_time, end_time):
+        """Check if the analysis completed in a reasonable time"""
+        print("\n🔍 Checking performance...")
+        
+        duration = end_time - start_time
+        print(f"Analysis completed in {duration:.2f} seconds")
+        
+        if duration < 120:  # Less than 2 minutes
+            print("✅ Passed - Analysis completed in reasonable time")
+            self.tests_passed += 1
+            self.test_results["Performance"] = {
+                "status": "PASSED",
+                "duration": f"{duration:.2f} seconds"
+            }
+            return True
+        else:
+            print("❌ Failed - Analysis took too long")
+            self.test_results["Performance"] = {
+                "status": "FAILED",
+                "error": f"Analysis took {duration:.2f} seconds (> 120 seconds)"
             }
             return False
     
@@ -195,6 +238,8 @@ class SEOToolAPITester:
         for name, result in self.test_results.items():
             status = "✅ PASSED" if result["status"] == "PASSED" else "❌ FAILED"
             print(f"{status} - {name}")
+            if result["status"] == "PASSED" and "details" in result:
+                print(f"  Details: {result['details']}")
             if result["status"] == "FAILED" and "error" in result:
                 print(f"  Error: {result['error']}")
         print("="*50)
@@ -214,7 +259,9 @@ def main():
     success, analyses = tester.test_get_analyses()
     
     # Test analyze endpoint with example.com
+    start_time = time.time()
     success, analysis_result = tester.test_analyze_website()
+    end_time = time.time()
     
     # Check if analysis was successful
     if success and analysis_result:
@@ -226,10 +273,16 @@ def main():
         tester.tests_run += 1
         tester.check_screenshots(analysis_result)
         
+        # Check performance
+        tester.tests_run += 1
+        tester.check_performance(start_time, end_time)
+        
         # Test getting analysis by ID
         if "id" in analysis_result:
             analysis_id = analysis_result["id"]
             tester.test_get_analysis_by_id(analysis_id)
+    else:
+        print("\n❌ Analysis failed - Cannot perform additional checks")
     
     # Print summary
     tester.print_summary()
