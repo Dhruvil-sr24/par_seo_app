@@ -110,8 +110,8 @@ class SEOToolAPITester:
         print("="*50)
 
 def main():
-    # Get backend URL from environment variable (same as frontend uses)
-    backend_url = os.environ.get('REACT_APP_BACKEND_URL', 'http://localhost:8001')
+    # Use the backend URL from frontend's .env file
+    backend_url = "https://555bd5fc-b652-4fea-9ad7-f48d697cb8d3.preview.emergentagent.com"
     print(f"Testing backend API at: {backend_url}")
     
     # Initialize tester
