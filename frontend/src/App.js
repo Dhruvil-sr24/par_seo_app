@@ -7,6 +7,14 @@ const App = () => {
   const [analysis, setAnalysis] = useState(null);
   const [error, setError] = useState('');
   const [recentAnalyses, setRecentAnalyses] = useState([]);
+  const [activeTab, setActiveTab] = useState('analysis');
+  const [competitorUrls, setCompetitorUrls] = useState(['']);
+  const [targetKeywords, setTargetKeywords] = useState(['']);
+  const [contentType, setContentType] = useState('article');
+  const [isLoadingCompetitor, setIsLoadingCompetitor] = useState(false);
+  const [isLoadingTemplate, setIsLoadingTemplate] = useState(false);
+  const [competitorAnalysis, setCompetitorAnalysis] = useState(null);
+  const [contentTemplate, setContentTemplate] = useState(null);
 
   const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001';
 
@@ -58,6 +66,105 @@ const App = () => {
     } finally {
       setIsAnalyzing(false);
     }
+  };
+
+  const handleCompetitorAnalysis = async () => {
+    if (!url.trim()) {
+      setError('Please enter a primary URL first');
+      return;
+    }
+
+    const validCompetitorUrls = competitorUrls.filter(url => url.trim());
+    if (validCompetitorUrls.length === 0) {
+      setError('Please enter at least one competitor URL');
+      return;
+    }
+
+    setIsLoadingCompetitor(true);
+    setError('');
+
+    try {
+      const response = await fetch(`${backendUrl}/api/competitor-analysis`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          primary_url: url,
+          competitor_urls: validCompetitorUrls
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Competitor analysis failed');
+      }
+
+      const data = await response.json();
+      setCompetitorAnalysis(data);
+    } catch (error) {
+      setError(error.message || 'Failed to analyze competitors');
+    } finally {
+      setIsLoadingCompetitor(false);
+    }
+  };
+
+  const handleContentTemplate = async () => {
+    if (!url.trim()) {
+      setError('Please enter a URL first');
+      return;
+    }
+
+    const validKeywords = targetKeywords.filter(keyword => keyword.trim());
+    if (validKeywords.length === 0) {
+      setError('Please enter at least one target keyword');
+      return;
+    }
+
+    setIsLoadingTemplate(true);
+    setError('');
+
+    try {
+      const response = await fetch(`${backendUrl}/api/seo-content-template`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          url,
+          target_keywords: validKeywords,
+          content_type: contentType
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Content template generation failed');
+      }
+
+      const data = await response.json();
+      setContentTemplate(data);
+    } catch (error) {
+      setError(error.message || 'Failed to generate content template');
+    } finally {
+      setIsLoadingTemplate(false);
+    }
+  };
+
+  const addCompetitorUrl = () => {
+    setCompetitorUrls([...competitorUrls, '']);
+  };
+
+  const removeCompetitorUrl = (index) => {
+    setCompetitorUrls(competitorUrls.filter((_, i) => i !== index));
+  };
+
+  const addTargetKeyword = () => {
+    setTargetKeywords([...targetKeywords, '']);
+  };
+
+  const removeTargetKeyword = (index) => {
+    setTargetKeywords(targetKeywords.filter((_, i) => i !== index));
   };
 
   const ScoreCard = ({ title, score, color }) => (
@@ -133,21 +240,166 @@ const App = () => {
     </div>
   );
 
-  const AIInSights = ({ suggestions }) => (
-    <div className="bg-white rounded-lg shadow-md p-6">
-      <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
-        <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold mr-3">
-          AI
-        </span>
-        AI-Powered SEO Suggestions
-      </h3>
-      <div className="prose prose-sm max-w-none">
-        <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 whitespace-pre-wrap">
-          {suggestions}
+  const StructuredAIInsights = ({ suggestions }) => {
+    if (typeof suggestions === 'string') {
+      // Handle legacy format
+      return (
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+            <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold mr-3">
+              AI
+            </span>
+            AI-Powered SEO Suggestions
+          </h3>
+          <div className="prose prose-sm max-w-none">
+            <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 whitespace-pre-wrap">
+              {suggestions}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Handle new structured format
+    return (
+      <div className="space-y-6">
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+            <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold mr-3">
+              AI
+            </span>
+            AI-Powered SEO Suggestions by Metric
+          </h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Performance Suggestions */}
+            <div className="bg-red-50 rounded-lg p-4">
+              <h4 className="text-lg font-semibold text-red-800 mb-2 flex items-center">
+                <span className="bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-2">
+                  P
+                </span>
+                Performance ({Math.round((suggestions.performance?.current_score || 0) * 100)}%)
+              </h4>
+              <div className="text-sm text-red-700 mb-2">
+                <strong>Priority:</strong> {suggestions.performance?.priority || 'Unknown'}
+              </div>
+              {suggestions.performance?.issues && suggestions.performance.issues.length > 0 && (
+                <div className="mb-3">
+                  <strong className="text-red-700">Issues Found:</strong>
+                  <ul className="list-disc list-inside text-sm text-red-600 mt-1">
+                    {suggestions.performance.issues.map((issue, idx) => (
+                      <li key={idx}>{issue}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <div className="space-y-2">
+                <strong className="text-red-700">Suggestions:</strong>
+                {suggestions.performance?.suggestions?.map((suggestion, idx) => (
+                  <div key={idx} className="text-sm text-red-600 bg-white p-2 rounded">
+                    {suggestion}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* SEO Suggestions */}
+            <div className="bg-green-50 rounded-lg p-4">
+              <h4 className="text-lg font-semibold text-green-800 mb-2 flex items-center">
+                <span className="bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-2">
+                  S
+                </span>
+                SEO ({Math.round((suggestions.seo?.current_score || 0) * 100)}%)
+              </h4>
+              <div className="text-sm text-green-700 mb-2">
+                <strong>Priority:</strong> {suggestions.seo?.priority || 'Unknown'}
+              </div>
+              {suggestions.seo?.issues && suggestions.seo.issues.length > 0 && (
+                <div className="mb-3">
+                  <strong className="text-green-700">Issues Found:</strong>
+                  <ul className="list-disc list-inside text-sm text-green-600 mt-1">
+                    {suggestions.seo.issues.map((issue, idx) => (
+                      <li key={idx}>{issue}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <div className="space-y-2">
+                <strong className="text-green-700">Suggestions:</strong>
+                {suggestions.seo?.suggestions?.map((suggestion, idx) => (
+                  <div key={idx} className="text-sm text-green-600 bg-white p-2 rounded">
+                    {suggestion}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Accessibility Suggestions */}
+            <div className="bg-blue-50 rounded-lg p-4">
+              <h4 className="text-lg font-semibold text-blue-800 mb-2 flex items-center">
+                <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-2">
+                  A
+                </span>
+                Accessibility ({Math.round((suggestions.accessibility?.current_score || 0) * 100)}%)
+              </h4>
+              <div className="text-sm text-blue-700 mb-2">
+                <strong>Priority:</strong> {suggestions.accessibility?.priority || 'Unknown'}
+              </div>
+              {suggestions.accessibility?.issues && suggestions.accessibility.issues.length > 0 && (
+                <div className="mb-3">
+                  <strong className="text-blue-700">Issues Found:</strong>
+                  <ul className="list-disc list-inside text-sm text-blue-600 mt-1">
+                    {suggestions.accessibility.issues.map((issue, idx) => (
+                      <li key={idx}>{issue}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <div className="space-y-2">
+                <strong className="text-blue-700">Suggestions:</strong>
+                {suggestions.accessibility?.suggestions?.map((suggestion, idx) => (
+                  <div key={idx} className="text-sm text-blue-600 bg-white p-2 rounded">
+                    {suggestion}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Best Practices Suggestions */}
+            <div className="bg-purple-50 rounded-lg p-4">
+              <h4 className="text-lg font-semibold text-purple-800 mb-2 flex items-center">
+                <span className="bg-purple-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-2">
+                  B
+                </span>
+                Best Practices ({Math.round((suggestions.best_practices?.current_score || 0) * 100)}%)
+              </h4>
+              <div className="text-sm text-purple-700 mb-2">
+                <strong>Priority:</strong> {suggestions.best_practices?.priority || 'Unknown'}
+              </div>
+              {suggestions.best_practices?.issues && suggestions.best_practices.issues.length > 0 && (
+                <div className="mb-3">
+                  <strong className="text-purple-700">Issues Found:</strong>
+                  <ul className="list-disc list-inside text-sm text-purple-600 mt-1">
+                    {suggestions.best_practices.issues.map((issue, idx) => (
+                      <li key={idx}>{issue}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <div className="space-y-2">
+                <strong className="text-purple-700">Suggestions:</strong>
+                {suggestions.best_practices?.suggestions?.map((suggestion, idx) => (
+                  <div key={idx} className="text-sm text-purple-600 bg-white p-2 rounded">
+                    {suggestion}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-100">
