@@ -140,6 +140,10 @@ async def analyze_website(request: URLAnalysisRequest):
             "keywords": keywords,
             "backlinks": backlinks,
             "performance_metrics": performance_metrics,
+            "performance_issues": performance_issues,
+            "seo_issues": seo_issues,
+            "accessibility_issues": accessibility_issues,
+            "best_practices_issues": best_practices_issues,
             "created_at": datetime.utcnow()
         }
         
@@ -154,6 +158,10 @@ async def analyze_website(request: URLAnalysisRequest):
             keywords=keywords,
             backlinks=backlinks,
             performance_metrics=performance_metrics,
+            performance_issues=performance_issues,
+            seo_issues=seo_issues,
+            accessibility_issues=accessibility_issues,
+            best_practices_issues=best_practices_issues,
             created_at=analysis_result["created_at"]
         )
         
