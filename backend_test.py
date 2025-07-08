@@ -2,6 +2,7 @@ import requests
 import unittest
 import time
 import os
+import json
 from datetime import datetime
 
 class SEOToolAPITester:
@@ -96,6 +97,95 @@ class SEOToolAPITester:
             200
         )
     
+    def check_ai_suggestions(self, analysis_result):
+        """Check if AI suggestions are working properly"""
+        print("\n🔍 Checking AI suggestions...")
+        
+        ai_suggestions = analysis_result.get("ai_suggestions", "")
+        
+        if not ai_suggestions:
+            print("❌ Failed - No AI suggestions found")
+            self.test_results["AI Suggestions"] = {
+                "status": "FAILED",
+                "error": "No AI suggestions found"
+            }
+            return False
+            
+        if "Gemini API key not configured" in ai_suggestions:
+            print("❌ Failed - Gemini API key issue: " + ai_suggestions)
+            self.test_results["AI Suggestions"] = {
+                "status": "FAILED",
+                "error": "Gemini API key not configured"
+            }
+            return False
+            
+        # Check if it looks like actual AI-generated content
+        if len(ai_suggestions) > 100:
+            print("✅ Passed - AI suggestions generated successfully")
+            print(f"AI Suggestions preview: {ai_suggestions[:100]}...")
+            self.tests_passed += 1
+            self.test_results["AI Suggestions"] = {
+                "status": "PASSED"
+            }
+            return True
+        else:
+            print("❌ Failed - AI suggestions too short or incomplete")
+            self.test_results["AI Suggestions"] = {
+                "status": "FAILED",
+                "error": "AI suggestions too short or incomplete"
+            }
+            return False
+    
+    def check_screenshots(self, analysis_result):
+        """Check if screenshots are being generated properly"""
+        print("\n🔍 Checking responsive screenshots...")
+        
+        screenshots = analysis_result.get("screenshots", [])
+        
+        if not screenshots:
+            print("❌ Failed - No screenshots found")
+            self.test_results["Screenshots"] = {
+                "status": "FAILED",
+                "error": "No screenshots found"
+            }
+            return False
+            
+        # Check if we have screenshots for different devices
+        devices = [s.get("device") for s in screenshots]
+        print(f"Found screenshots for devices: {', '.join(devices)}")
+        
+        # Check if screenshots have actual image data
+        valid_screenshots = 0
+        for screenshot in screenshots:
+            if screenshot.get("screenshot", "").startswith("data:image"):
+                valid_screenshots += 1
+                
+        if valid_screenshots == 0:
+            print("❌ Failed - No valid screenshot data found")
+            self.test_results["Screenshots"] = {
+                "status": "FAILED",
+                "error": "No valid screenshot data found"
+            }
+            return False
+        
+        success_rate = valid_screenshots / len(screenshots) if screenshots else 0
+        print(f"Screenshot success rate: {valid_screenshots}/{len(screenshots)} ({success_rate*100:.1f}%)")
+        
+        if success_rate >= 0.5:  # At least half of the screenshots should be valid
+            print("✅ Passed - Screenshots generated successfully")
+            self.tests_passed += 1
+            self.test_results["Screenshots"] = {
+                "status": "PASSED"
+            }
+            return True
+        else:
+            print("❌ Failed - Too many missing screenshots")
+            self.test_results["Screenshots"] = {
+                "status": "FAILED",
+                "error": f"Only {valid_screenshots}/{len(screenshots)} screenshots were valid"
+            }
+            return False
+    
     def print_summary(self):
         """Print test summary"""
         print("\n" + "="*50)
@@ -126,13 +216,33 @@ def main():
     # Test analyze endpoint with example.com
     success, analysis_result = tester.test_analyze_website()
     
-    # If analysis was successful, test getting it by ID
-    if success and "id" in analysis_result:
-        analysis_id = analysis_result["id"]
-        tester.test_get_analysis_by_id(analysis_id)
+    # Check if analysis was successful
+    if success and analysis_result:
+        # Check if AI suggestions are working
+        tester.tests_run += 1
+        tester.check_ai_suggestions(analysis_result)
+        
+        # Check if screenshots are being generated
+        tester.tests_run += 1
+        tester.check_screenshots(analysis_result)
+        
+        # Test getting analysis by ID
+        if "id" in analysis_result:
+            analysis_id = analysis_result["id"]
+            tester.test_get_analysis_by_id(analysis_id)
     
     # Print summary
     tester.print_summary()
+    
+    # Save detailed results to a file for reference
+    with open('api_test_results.json', 'w') as f:
+        json.dump({
+            "timestamp": datetime.now().isoformat(),
+            "tests_run": tester.tests_run,
+            "tests_passed": tester.tests_passed,
+            "results": tester.test_results,
+            "analysis_sample": analysis_result if success else None
+        }, f, indent=2, default=str)
     
     return 0 if tester.tests_passed == tester.tests_run else 1
 
