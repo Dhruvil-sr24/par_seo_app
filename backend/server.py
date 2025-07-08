@@ -230,7 +230,7 @@ async def generate_responsive_screenshots(url: str) -> List[Dict[str, str]]:
                     await page.goto(url, wait_until="networkidle", timeout=30000)
                     
                     # Take screenshot
-                    screenshot = await page.screenshot(full_page=False, quality=40)
+                    screenshot = await page.screenshot(full_page=False)
                     screenshot_base64 = base64.b64encode(screenshot).decode()
                     
                     screenshots.append({
