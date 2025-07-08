@@ -36,7 +36,7 @@ client = AsyncIOMotorClient(MONGO_URL)
 db = client.seo_tool
 
 # Environment variables
-GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
+GEMINI_API_KEY = os.environ.get('AIzaSyApJd6nf2WFYow_O2K4EFVH2j5WD6ktF6U')
 
 class URLAnalysisRequest(BaseModel):
     url: HttpUrl
