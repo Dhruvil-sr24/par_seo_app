@@ -175,15 +175,21 @@ async def run_lighthouse_analysis(url: str) -> Dict[str, Any]:
         with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
             temp_file = f.name
         
-        # Run lighthouse
+        # Run lighthouse with better configuration for containerized environment
         cmd = [
             'lighthouse',
             url,
             '--output=json',
             '--output-path=' + temp_file,
-            '--chrome-flags=--headless --no-sandbox --disable-dev-shm-usage',
-            '--preset=perf'
+            '--chrome-flags=--headless --no-sandbox --disable-dev-shm-usage --disable-gpu --remote-debugging-port=9222',
+            '--preset=perf',
+            '--max-wait-for-fcp=15000',
+            '--max-wait-for-load=35000',
+            '--throttling-method=simulate',
+            '--disable-storage-reset'
         ]
+        
+        print(f"Running lighthouse analysis for: {url}")
         
         process = await asyncio.create_subprocess_exec(
             *cmd,
@@ -191,38 +197,39 @@ async def run_lighthouse_analysis(url: str) -> Dict[str, Any]:
             stderr=asyncio.subprocess.PIPE
         )
         
-        stdout, stderr = await process.communicate()
+        # Set a reasonable timeout for lighthouse
+        try:
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=60.0)
+        except asyncio.TimeoutError:
+            process.kill()
+            print(f"Lighthouse analysis timed out for {url}")
+            raise Exception("Lighthouse analysis timed out")
         
         if process.returncode != 0:
-            # If lighthouse fails, return mock data
-            return {
-                "performance": 0.8,
-                "accessibility": 0.9,
-                "best_practices": 0.85,
-                "seo": 0.75,
-                "categories": {
-                    "performance": {"score": 0.8},
-                    "accessibility": {"score": 0.9},
-                    "best-practices": {"score": 0.85},
-                    "seo": {"score": 0.75}
-                },
-                "audits": {
-                    "first-contentful-paint": {"numericValue": 1500},
-                    "speed-index": {"numericValue": 2000},
-                    "largest-contentful-paint": {"numericValue": 2500}
-                }
-            }
+            print(f"Lighthouse failed with return code {process.returncode}")
+            print(f"STDERR: {stderr.decode()}")
+            print(f"STDOUT: {stdout.decode()}")
+            raise Exception(f"Lighthouse analysis failed: {stderr.decode()}")
         
         # Read the lighthouse results
-        with open(temp_file, 'r') as f:
-            lighthouse_data = json.load(f)
-        
-        # Clean up temp file
-        os.unlink(temp_file)
+        try:
+            with open(temp_file, 'r') as f:
+                lighthouse_data = json.load(f)
+        except Exception as e:
+            print(f"Failed to read lighthouse results: {str(e)}")
+            raise Exception(f"Failed to read lighthouse results: {str(e)}")
+        finally:
+            # Clean up temp file
+            if os.path.exists(temp_file):
+                os.unlink(temp_file)
         
         # Extract key metrics
         categories = lighthouse_data.get('categories', {})
         audits = lighthouse_data.get('audits', {})
+        
+        print(f"✅ Lighthouse analysis completed successfully for {url}")
+        print(f"Performance: {categories.get('performance', {}).get('score', 0)}")
+        print(f"SEO: {categories.get('seo', {}).get('score', 0)}")
         
         return {
             "performance": categories.get('performance', {}).get('score', 0),
@@ -235,24 +242,155 @@ async def run_lighthouse_analysis(url: str) -> Dict[str, Any]:
         
     except Exception as e:
         print(f"Lighthouse analysis failed: {str(e)}")
-        # Return mock data if lighthouse fails
-        return {
-            "performance": 0.8,
-            "accessibility": 0.9,
-            "best_practices": 0.85,
-            "seo": 0.75,
-            "categories": {
-                "performance": {"score": 0.8},
-                "accessibility": {"score": 0.9},
-                "best-practices": {"score": 0.85},
-                "seo": {"score": 0.75}
-            },
-            "audits": {
-                "first-contentful-paint": {"numericValue": 1500},
-                "speed-index": {"numericValue": 2000},
-                "largest-contentful-paint": {"numericValue": 2500}
+        
+        # Instead of returning mock data, try a simplified lighthouse run
+        try:
+            print("Attempting simplified lighthouse analysis...")
+            
+            # Try a simpler lighthouse command
+            simple_cmd = [
+                'lighthouse',
+                url,
+                '--output=json',
+                '--output-path=' + temp_file,
+                '--chrome-flags=--headless --no-sandbox --disable-dev-shm-usage',
+                '--only-categories=performance,seo,accessibility,best-practices',
+                '--skip-audits=screenshot-thumbnails,final-screenshot'
+            ]
+            
+            process = await asyncio.create_subprocess_exec(
+                *simple_cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=45.0)
+            
+            if process.returncode == 0:
+                with open(temp_file, 'r') as f:
+                    lighthouse_data = json.load(f)
+                
+                categories = lighthouse_data.get('categories', {})
+                audits = lighthouse_data.get('audits', {})
+                
+                print(f"✅ Simplified lighthouse analysis completed for {url}")
+                
+                return {
+                    "performance": categories.get('performance', {}).get('score', 0),
+                    "accessibility": categories.get('accessibility', {}).get('score', 0),
+                    "best_practices": categories.get('best-practices', {}).get('score', 0),
+                    "seo": categories.get('seo', {}).get('score', 0),
+                    "categories": categories,
+                    "audits": audits
+                }
+            
+        except Exception as simple_error:
+            print(f"Simplified lighthouse also failed: {str(simple_error)}")
+        
+        finally:
+            # Clean up temp file
+            if os.path.exists(temp_file):
+                os.unlink(temp_file)
+        
+        # As absolute last resort, try to get basic page metrics using a different approach
+        try:
+            print("Attempting basic performance analysis...")
+            return await get_basic_page_metrics(url)
+        except Exception as basic_error:
+            print(f"Basic analysis also failed: {str(basic_error)}")
+            
+            # Only return mock data as absolute last resort
+            print("⚠️ Using fallback data - all lighthouse methods failed")
+            return {
+                "performance": 0.5,  # Lower fallback scores to indicate issues
+                "accessibility": 0.7,
+                "best_practices": 0.6,
+                "seo": 0.5,
+                "categories": {
+                    "performance": {"score": 0.5, "title": "Performance (Fallback)"},
+                    "accessibility": {"score": 0.7, "title": "Accessibility (Fallback)"},
+                    "best-practices": {"score": 0.6, "title": "Best Practices (Fallback)"},
+                    "seo": {"score": 0.5, "title": "SEO (Fallback)"}
+                },
+                "audits": {
+                    "first-contentful-paint": {"numericValue": 3000, "title": "First Contentful Paint (Estimated)"},
+                    "speed-index": {"numericValue": 4000, "title": "Speed Index (Estimated)"},
+                    "largest-contentful-paint": {"numericValue": 5000, "title": "Largest Contentful Paint (Estimated)"}
+                },
+                "error": "Lighthouse analysis unavailable - using estimated values"
             }
-        }
+
+async def get_basic_page_metrics(url: str) -> Dict[str, Any]:
+    """Get basic page performance metrics using Playwright"""
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            page = await browser.new_page()
+            
+            # Start timing
+            start_time = time.time()
+            
+            # Navigate to page and measure basic timing
+            await page.goto(url, wait_until="networkidle", timeout=30000)
+            
+            # Get page metrics
+            load_time = (time.time() - start_time) * 1000  # Convert to ms
+            
+            # Get basic page information
+            title = await page.title()
+            meta_description = await page.get_attribute('meta[name="description"]', 'content') or ""
+            
+            # Check for some basic SEO elements
+            h1_count = await page.locator('h1').count()
+            img_without_alt = await page.locator('img:not([alt])').count()
+            
+            # Check for HTTPS
+            is_https = url.startswith('https://')
+            
+            await browser.close()
+            
+            # Calculate basic scores based on metrics
+            performance_score = max(0, min(1, (5000 - load_time) / 5000))  # Better if load time < 5s
+            seo_score = 1.0
+            if not title:
+                seo_score -= 0.3
+            if not meta_description:
+                seo_score -= 0.2
+            if h1_count == 0:
+                seo_score -= 0.2
+            if h1_count > 1:
+                seo_score -= 0.1
+                
+            accessibility_score = max(0, 1 - (img_without_alt * 0.1))  # Reduce for missing alt text
+            best_practices_score = 0.9 if is_https else 0.5
+            
+            print(f"✅ Basic page analysis completed for {url}")
+            print(f"Load time: {load_time:.0f}ms")
+            print(f"Performance score: {performance_score:.2f}")
+            print(f"SEO score: {seo_score:.2f}")
+            
+            return {
+                "performance": performance_score,
+                "accessibility": accessibility_score,
+                "best_practices": best_practices_score,
+                "seo": seo_score,
+                "categories": {
+                    "performance": {"score": performance_score, "title": "Performance (Basic Analysis)"},
+                    "accessibility": {"score": accessibility_score, "title": "Accessibility (Basic Analysis)"},
+                    "best-practices": {"score": best_practices_score, "title": "Best Practices (Basic Analysis)"},
+                    "seo": {"score": seo_score, "title": "SEO (Basic Analysis)"}
+                },
+                "audits": {
+                    "first-contentful-paint": {"numericValue": load_time * 0.6, "title": "First Contentful Paint (Estimated)"},
+                    "speed-index": {"numericValue": load_time * 0.8, "title": "Speed Index (Estimated)"},
+                    "largest-contentful-paint": {"numericValue": load_time * 0.9, "title": "Largest Contentful Paint (Estimated)"}
+                },
+                "method": "basic_analysis"
+            }
+            
+    except Exception as e:
+        print(f"Basic page metrics failed: {str(e)}")
+        raise e
 
 async def generate_responsive_screenshots(url: str) -> List[Dict[str, str]]:
     """Generate screenshots for different screen sizes"""
