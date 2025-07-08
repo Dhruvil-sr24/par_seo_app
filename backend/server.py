@@ -244,8 +244,8 @@ async def generate_responsive_screenshots(url: str) -> List[Dict[str, str]]:
                     print(f"Screenshot failed for {size['name']}: {str(e)}")
                     screenshots.append({
                         "device": size["name"],
-                        "width": size["width"],
-                        "height": size["height"],
+                        "width": str(size["width"]),
+                        "height": str(size["height"]),
                         "screenshot": "",
                         "error": str(e)
                     })
