@@ -420,122 +420,429 @@ const App = () => {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        {/* URL Input Section */}
-        <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
-            Analyze Your Website's SEO Performance
-          </h2>
-          <div className="flex flex-col md:flex-row gap-4 max-w-3xl mx-auto">
-            <input
-              type="url"
-              placeholder="Enter website URL (e.g., https://example.com)"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              disabled={isAnalyzing}
-            />
-            <button
-              onClick={handleAnalyze}
-              disabled={isAnalyzing}
-              className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-8 py-3 rounded-lg font-semibold hover:from-blue-600 hover:to-purple-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isAnalyzing ? 'Analyzing...' : 'Analyze Website'}
-            </button>
-          </div>
-          {error && (
-            <div className="mt-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg text-center">
-              {error}
-            </div>
-          )}
+      {/* Navigation Tabs */}
+      <div className="max-w-7xl mx-auto px-4 py-4">
+        <div className="flex space-x-4 bg-white rounded-lg shadow-md p-1">
+          <button
+            onClick={() => setActiveTab('analysis')}
+            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+              activeTab === 'analysis' 
+                ? 'bg-blue-500 text-white' 
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Website Analysis
+          </button>
+          <button
+            onClick={() => setActiveTab('competitor')}
+            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+              activeTab === 'competitor' 
+                ? 'bg-blue-500 text-white' 
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Competitor Analysis
+          </button>
+          <button
+            onClick={() => setActiveTab('content')}
+            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+              activeTab === 'content' 
+                ? 'bg-blue-500 text-white' 
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            SEO Content Template
+          </button>
         </div>
+      </div>
 
-        {/* Loading State */}
-        {isAnalyzing && (
-          <div className="bg-white rounded-lg shadow-lg p-8 mb-8 text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-            <h3 className="text-xl font-semibold text-gray-800 mb-2">Analyzing Your Website...</h3>
-            <p className="text-gray-600">
-              This may take a moment. We're running Lighthouse tests, generating screenshots, and preparing AI insights.
-            </p>
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 pb-8">
+        {/* Website Analysis Tab */}
+        {activeTab === 'analysis' && (
+          <div className="space-y-8">
+            {/* URL Input Section */}
+            <div className="bg-white rounded-lg shadow-lg p-8">
+              <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
+                Analyze Your Website's SEO Performance
+              </h2>
+              <div className="flex flex-col md:flex-row gap-4 max-w-3xl mx-auto">
+                <input
+                  type="url"
+                  placeholder="Enter website URL (e.g., https://example.com)"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  disabled={isAnalyzing}
+                />
+                <button
+                  onClick={handleAnalyze}
+                  disabled={isAnalyzing}
+                  className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-8 py-3 rounded-lg font-semibold hover:from-blue-600 hover:to-purple-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isAnalyzing ? 'Analyzing...' : 'Analyze Website'}
+                </button>
+              </div>
+              {error && (
+                <div className="mt-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg text-center">
+                  {error}
+                </div>
+              )}
+            </div>
+
+            {/* Loading State */}
+            {isAnalyzing && (
+              <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                <h3 className="text-xl font-semibold text-gray-800 mb-2">Analyzing Your Website...</h3>
+                <p className="text-gray-600">
+                  This may take a moment. We're running Lighthouse tests, generating screenshots, and preparing AI insights.
+                </p>
+              </div>
+            )}
+
+            {/* Analysis Results */}
+            {analysis && (
+              <div className="space-y-8">
+                {/* Performance Scores */}
+                <div className="bg-white rounded-lg shadow-lg p-6">
+                  <h2 className="text-2xl font-bold text-gray-800 mb-6">Performance Scores</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <ScoreCard 
+                      title="Performance" 
+                      score={analysis.lighthouse_score.performance} 
+                      color="text-blue-600" 
+                    />
+                    <ScoreCard 
+                      title="Accessibility" 
+                      score={analysis.lighthouse_score.accessibility} 
+                      color="text-green-600" 
+                    />
+                    <ScoreCard 
+                      title="Best Practices" 
+                      score={analysis.lighthouse_score.best_practices} 
+                      color="text-yellow-600" 
+                    />
+                    <ScoreCard 
+                      title="SEO Score" 
+                      score={analysis.lighthouse_score.seo} 
+                      color="text-purple-600" 
+                    />
+                  </div>
+                </div>
+
+                {/* Overall Performance */}
+                <div className="bg-white rounded-lg shadow-lg p-6">
+                  <h2 className="text-2xl font-bold text-gray-800 mb-6">Overall Performance</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="text-center">
+                      <div className="text-4xl font-bold text-blue-600 mb-2">
+                        {Math.round(analysis.performance_metrics.overall_score * 100)}%
+                      </div>
+                      <div className="text-lg text-gray-600">Overall Score</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-4xl font-bold text-green-600 mb-2">
+                        {analysis.performance_metrics.grade}
+                      </div>
+                      <div className="text-lg text-gray-600">Grade</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-4xl font-bold text-purple-600 mb-2">
+                        {analysis.keywords.length}
+                      </div>
+                      <div className="text-lg text-gray-600">Keywords Found</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Responsive Screenshots */}
+                <div className="bg-white rounded-lg shadow-lg p-6">
+                  <h2 className="text-2xl font-bold text-gray-800 mb-6">Responsive Design Testing</h2>
+                  <ScreenshotGrid screenshots={analysis.screenshots} />
+                </div>
+
+                {/* AI Suggestions */}
+                <StructuredAIInsights suggestions={analysis.ai_suggestions} />
+
+                {/* Keywords and Backlinks */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  <KeywordsList keywords={analysis.keywords} />
+                  <BacklinksList backlinks={analysis.backlinks} />
+                </div>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Analysis Results */}
-        {analysis && (
+        {/* Competitor Analysis Tab */}
+        {activeTab === 'competitor' && (
           <div className="space-y-8">
-            {/* Performance Scores */}
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <h2 className="text-2xl font-bold text-gray-800 mb-6">Performance Scores</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <ScoreCard 
-                  title="Performance" 
-                  score={analysis.lighthouse_score.performance} 
-                  color="text-blue-600" 
-                />
-                <ScoreCard 
-                  title="Accessibility" 
-                  score={analysis.lighthouse_score.accessibility} 
-                  color="text-green-600" 
-                />
-                <ScoreCard 
-                  title="Best Practices" 
-                  score={analysis.lighthouse_score.best_practices} 
-                  color="text-yellow-600" 
-                />
-                <ScoreCard 
-                  title="SEO Score" 
-                  score={analysis.lighthouse_score.seo} 
-                  color="text-purple-600" 
-                />
+            <div className="bg-white rounded-lg shadow-lg p-8">
+              <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
+                Competitor Analysis
+              </h2>
+              
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Primary Website URL
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="https://yourwebsite.com"
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    disabled={isLoadingCompetitor}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Competitor URLs
+                  </label>
+                  {competitorUrls.map((competitorUrl, index) => (
+                    <div key={index} className="flex gap-2 mb-2">
+                      <input
+                        type="url"
+                        placeholder="https://competitor.com"
+                        value={competitorUrl}
+                        onChange={(e) => {
+                          const newUrls = [...competitorUrls];
+                          newUrls[index] = e.target.value;
+                          setCompetitorUrls(newUrls);
+                        }}
+                        className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        disabled={isLoadingCompetitor}
+                      />
+                      {competitorUrls.length > 1 && (
+                        <button
+                          onClick={() => removeCompetitorUrl(index)}
+                          className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                          disabled={isLoadingCompetitor}
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <button
+                    onClick={addCompetitorUrl}
+                    className="mt-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                    disabled={isLoadingCompetitor}
+                  >
+                    Add Another Competitor
+                  </button>
+                </div>
+
+                <div className="text-center">
+                  <button
+                    onClick={handleCompetitorAnalysis}
+                    disabled={isLoadingCompetitor}
+                    className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-8 py-3 rounded-lg font-semibold hover:from-blue-600 hover:to-purple-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isLoadingCompetitor ? 'Analyzing Competitors...' : 'Analyze Competitors'}
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Overall Performance */}
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <h2 className="text-2xl font-bold text-gray-800 mb-6">Overall Performance</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="text-center">
-                  <div className="text-4xl font-bold text-blue-600 mb-2">
-                    {Math.round(analysis.performance_metrics.overall_score * 100)}%
+            {/* Loading State */}
+            {isLoadingCompetitor && (
+              <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                <h3 className="text-xl font-semibold text-gray-800 mb-2">Analyzing Competitors...</h3>
+                <p className="text-gray-600">
+                  This may take a moment. We're analyzing your competitors and preparing insights.
+                </p>
+              </div>
+            )}
+
+            {/* Competitor Analysis Results */}
+            {competitorAnalysis && (
+              <div className="space-y-8">
+                <div className="bg-white rounded-lg shadow-lg p-6">
+                  <h2 className="text-2xl font-bold text-gray-800 mb-6">Competitive Insights</h2>
+                  <div className="space-y-4">
+                    {competitorAnalysis.comparison_insights.insights.map((insight, index) => (
+                      <div key={index} className="bg-blue-50 p-4 rounded-lg">
+                        <p className="text-gray-700">{insight}</p>
+                      </div>
+                    ))}
                   </div>
-                  <div className="text-lg text-gray-600">Overall Score</div>
                 </div>
-                <div className="text-center">
-                  <div className="text-4xl font-bold text-green-600 mb-2">
-                    {analysis.performance_metrics.grade}
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  <div className="bg-white rounded-lg shadow-lg p-6">
+                    <h3 className="text-xl font-semibold text-gray-800 mb-4">Competitive Keywords</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {competitorAnalysis.competitive_keywords.map((keyword, index) => (
+                        <span 
+                          key={index}
+                          className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-sm font-medium"
+                        >
+                          {keyword}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                  <div className="text-lg text-gray-600">Grade</div>
+
+                  <div className="bg-white rounded-lg shadow-lg p-6">
+                    <h3 className="text-xl font-semibold text-gray-800 mb-4">Content Gaps</h3>
+                    <div className="space-y-2">
+                      {competitorAnalysis.content_gaps.map((gap, index) => (
+                        <div key={index} className="bg-red-50 p-3 rounded-lg">
+                          <p className="text-red-700 text-sm">{gap}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* SEO Content Template Tab */}
+        {activeTab === 'content' && (
+          <div className="space-y-8">
+            <div className="bg-white rounded-lg shadow-lg p-8">
+              <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
+                SEO Content Template Generator
+              </h2>
+              
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Website URL
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="https://yourwebsite.com"
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    disabled={isLoadingTemplate}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Target Keywords
+                  </label>
+                  {targetKeywords.map((keyword, index) => (
+                    <div key={index} className="flex gap-2 mb-2">
+                      <input
+                        type="text"
+                        placeholder="Enter target keyword"
+                        value={keyword}
+                        onChange={(e) => {
+                          const newKeywords = [...targetKeywords];
+                          newKeywords[index] = e.target.value;
+                          setTargetKeywords(newKeywords);
+                        }}
+                        className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        disabled={isLoadingTemplate}
+                      />
+                      {targetKeywords.length > 1 && (
+                        <button
+                          onClick={() => removeTargetKeyword(index)}
+                          className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                          disabled={isLoadingTemplate}
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <button
+                    onClick={addTargetKeyword}
+                    className="mt-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                    disabled={isLoadingTemplate}
+                  >
+                    Add Another Keyword
+                  </button>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Content Type
+                  </label>
+                  <select
+                    value={contentType}
+                    onChange={(e) => setContentType(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    disabled={isLoadingTemplate}
+                  >
+                    <option value="article">Article</option>
+                    <option value="blog">Blog Post</option>
+                    <option value="product">Product Page</option>
+                    <option value="landing">Landing Page</option>
+                  </select>
+                </div>
+
                 <div className="text-center">
-                  <div className="text-4xl font-bold text-purple-600 mb-2">
-                    {analysis.keywords.length}
-                  </div>
-                  <div className="text-lg text-gray-600">Keywords Found</div>
+                  <button
+                    onClick={handleContentTemplate}
+                    disabled={isLoadingTemplate}
+                    className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-8 py-3 rounded-lg font-semibold hover:from-blue-600 hover:to-purple-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isLoadingTemplate ? 'Generating Template...' : 'Generate Content Template'}
+                  </button>
                 </div>
               </div>
             </div>
 
-            {/* Responsive Screenshots */}
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <h2 className="text-2xl font-bold text-gray-800 mb-6">Responsive Design Testing</h2>
-              <ScreenshotGrid screenshots={analysis.screenshots} />
-            </div>
+            {/* Loading State */}
+            {isLoadingTemplate && (
+              <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                <h3 className="text-xl font-semibold text-gray-800 mb-2">Generating Content Template...</h3>
+                <p className="text-gray-600">
+                  This may take a moment. We're creating a comprehensive SEO content template for you.
+                </p>
+              </div>
+            )}
 
-            {/* AI Suggestions */}
-            <AIInSights suggestions={analysis.ai_suggestions} />
+            {/* Content Template Results */}
+            {contentTemplate && (
+              <div className="space-y-8">
+                <div className="bg-white rounded-lg shadow-lg p-6">
+                  <h2 className="text-2xl font-bold text-gray-800 mb-6">Content Template</h2>
+                  <div className="bg-gray-50 p-6 rounded-lg">
+                    <pre className="whitespace-pre-wrap text-sm text-gray-700">
+                      {contentTemplate.content_template.template}
+                    </pre>
+                  </div>
+                </div>
 
-            {/* Keywords and Backlinks */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <KeywordsList keywords={analysis.keywords} />
-              <BacklinksList backlinks={analysis.backlinks} />
-            </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  <div className="bg-white rounded-lg shadow-lg p-6">
+                    <h3 className="text-xl font-semibold text-gray-800 mb-4">Keyword Strategy</h3>
+                    <div className="bg-green-50 p-4 rounded-lg">
+                      <pre className="whitespace-pre-wrap text-sm text-gray-700">
+                        {contentTemplate.keyword_strategy.strategy}
+                      </pre>
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-lg shadow-lg p-6">
+                    <h3 className="text-xl font-semibold text-gray-800 mb-4">Content Outline</h3>
+                    <div className="bg-blue-50 p-4 rounded-lg">
+                      <pre className="whitespace-pre-wrap text-sm text-gray-700">
+                        {contentTemplate.content_outline.outline}
+                      </pre>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
         {/* Recent Analyses */}
-        {recentAnalyses.length > 0 && (
+        {activeTab === 'analysis' && recentAnalyses.length > 0 && (
           <div className="bg-white rounded-lg shadow-lg p-6 mt-8">
             <h2 className="text-2xl font-bold text-gray-800 mb-6">Recent Analyses</h2>
             <div className="space-y-4">
