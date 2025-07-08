@@ -220,37 +220,61 @@ async def generate_responsive_screenshots(url: str) -> List[Dict[str, str]]:
             {"name": "Desktop", "width": 1920, "height": 1080}
         ]
         
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
-            page = await browser.new_page()
-            
-            for size in screen_sizes:
+        try:
+            async with async_playwright() as p:
                 try:
-                    await page.set_viewport_size({"width": size["width"], "height": size["height"]})
-                    await page.goto(url, wait_until="networkidle", timeout=30000)
+                    browser = await p.chromium.launch(headless=True)
+                    page = await browser.new_page()
                     
-                    # Take screenshot
-                    screenshot = await page.screenshot(full_page=False)
-                    screenshot_base64 = base64.b64encode(screenshot).decode()
+                    for size in screen_sizes:
+                        try:
+                            await page.set_viewport_size({"width": size["width"], "height": size["height"]})
+                            await page.goto(url, wait_until="networkidle", timeout=30000)
+                            
+                            # Take screenshot
+                            screenshot = await page.screenshot(full_page=False)
+                            screenshot_base64 = base64.b64encode(screenshot).decode()
+                            
+                            screenshots.append({
+                                "device": size["name"],
+                                "width": str(size["width"]),
+                                "height": str(size["height"]),
+                                "screenshot": f"data:image/png;base64,{screenshot_base64}"
+                            })
+                            
+                        except Exception as e:
+                            print(f"Screenshot failed for {size['name']}: {str(e)}")
+                            screenshots.append({
+                                "device": size["name"],
+                                "width": str(size["width"]),
+                                "height": str(size["height"]),
+                                "screenshot": "",
+                                "error": str(e)
+                            })
                     
-                    screenshots.append({
-                        "device": size["name"],
-                        "width": str(size["width"]),
-                        "height": str(size["height"]),
-                        "screenshot": f"data:image/png;base64,{screenshot_base64}"
-                    })
-                    
-                except Exception as e:
-                    print(f"Screenshot failed for {size['name']}: {str(e)}")
-                    screenshots.append({
-                        "device": size["name"],
-                        "width": str(size["width"]),
-                        "height": str(size["height"]),
-                        "screenshot": "",
-                        "error": str(e)
-                    })
-            
-            await browser.close()
+                    await browser.close()
+                except Exception as browser_error:
+                    print(f"Browser launch failed: {str(browser_error)}")
+                    # Generate mock screenshots if browser launch fails
+                    for size in screen_sizes:
+                        screenshots.append({
+                            "device": size["name"],
+                            "width": str(size["width"]),
+                            "height": str(size["height"]),
+                            "screenshot": "",
+                            "error": f"Browser launch failed: {str(browser_error)}"
+                        })
+        except Exception as playwright_error:
+            print(f"Screenshot generation failed: {str(playwright_error)}")
+            # Generate mock screenshots if Playwright fails
+            for size in screen_sizes:
+                screenshots.append({
+                    "device": size["name"],
+                    "width": str(size["width"]),
+                    "height": str(size["height"]),
+                    "screenshot": "",
+                    "error": f"Playwright error: {str(playwright_error)}"
+                })
         
         return screenshots
         
