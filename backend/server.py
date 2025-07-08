@@ -22,6 +22,9 @@ import time
 # Set Playwright browser path
 os.environ['PLAYWRIGHT_BROWSERS_PATH'] = '/pw-browsers'
 
+# Set Chrome path for Lighthouse
+os.environ['CHROME_PATH'] = '/pw-browsers/chromium-1091/chrome-linux/chrome'
+
 app = FastAPI(title="AI-Powered SEO Tool", version="1.0.0")
 
 # CORS middleware
