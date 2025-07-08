@@ -43,16 +43,46 @@ GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', 'AIzaSyApJd6nf2WFYow_O2K4EFVH2
 
 class URLAnalysisRequest(BaseModel):
     url: HttpUrl
-    
+
+class CompetitorAnalysisRequest(BaseModel):
+    primary_url: HttpUrl
+    competitor_urls: List[HttpUrl]
+
+class SEOContentTemplateRequest(BaseModel):
+    url: HttpUrl
+    target_keywords: List[str]
+    content_type: str = "article"  # article, blog, product, landing
+
 class SEOAnalysisResponse(BaseModel):
     id: str
     url: str
     lighthouse_score: Dict[str, Any]
     screenshots: List[Dict[str, str]]
-    ai_suggestions: str
+    ai_suggestions: Dict[str, Any]  # Changed from str to Dict for structured suggestions
     keywords: List[str]
     backlinks: List[str]
     performance_metrics: Dict[str, Any]
+    performance_issues: List[str]  # New field for specific issues
+    seo_issues: List[str]  # New field for specific issues
+    accessibility_issues: List[str]  # New field for specific issues
+    best_practices_issues: List[str]  # New field for specific issues
+    created_at: datetime
+
+class CompetitorAnalysisResponse(BaseModel):
+    id: str
+    primary_url: str
+    competitor_data: List[Dict[str, Any]]
+    comparison_insights: Dict[str, Any]
+    competitive_keywords: List[str]
+    content_gaps: List[str]
+    created_at: datetime
+
+class SEOContentTemplateResponse(BaseModel):
+    id: str
+    url: str
+    content_template: Dict[str, Any]
+    keyword_strategy: Dict[str, Any]
+    content_outline: Dict[str, Any]
     created_at: datetime
 
 @app.get("/")
