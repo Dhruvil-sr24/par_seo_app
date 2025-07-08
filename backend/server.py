@@ -19,6 +19,9 @@ import base64
 from playwright.async_api import async_playwright
 import time
 
+# Set Playwright browser path
+os.environ['PLAYWRIGHT_BROWSERS_PATH'] = '/pw-browsers'
+
 app = FastAPI(title="AI-Powered SEO Tool", version="1.0.0")
 
 # CORS middleware
