@@ -1,20 +1,21 @@
 {
-  "timestamp": "2025-07-08T05:46:03.168932",
+  "timestamp": "2025-07-08T05:46:38.625162",
   "tests_run": 3,
-  "tests_passed": 2,
+  "tests_passed": 1,
   "results": {
     "Root Endpoint": {
       "status": "PASSED",
       "response_code": 200
     },
     "Get All Analyses": {
-      "status": "PASSED",
-      "response_code": 200
+      "status": "FAILED",
+      "response_code": 502,
+      "error": "Expected 200, got 502"
     },
     "Analyze Website": {
       "status": "FAILED",
-      "response_code": 500,
-      "error": "Expected 200, got 500"
+      "response_code": 502,
+      "error": "Expected 200, got 502"
     }
   },
   "analysis_sample": null
