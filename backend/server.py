@@ -115,8 +115,17 @@ async def analyze_website(request: URLAnalysisRequest):
         keywords = await keywords_task
         backlinks = await backlinks_task
         
-        # Generate AI suggestions based on all collected data
-        ai_suggestions = await generate_ai_suggestions(url, lighthouse_score, keywords, backlinks)
+        # Extract specific issues from lighthouse data
+        performance_issues = extract_performance_issues(lighthouse_score)
+        seo_issues = extract_seo_issues(lighthouse_score)
+        accessibility_issues = extract_accessibility_issues(lighthouse_score)
+        best_practices_issues = extract_best_practices_issues(lighthouse_score)
+        
+        # Generate structured AI suggestions based on all collected data
+        ai_suggestions = await generate_structured_ai_suggestions(
+            url, lighthouse_score, keywords, backlinks, 
+            performance_issues, seo_issues, accessibility_issues, best_practices_issues
+        )
         
         # Calculate performance metrics
         performance_metrics = calculate_performance_metrics(lighthouse_score, len(keywords), len(backlinks))
