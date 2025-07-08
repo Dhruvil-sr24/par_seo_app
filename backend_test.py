@@ -246,7 +246,7 @@ class SEOToolAPITester:
 
 def main():
     # Use the backend URL from frontend's .env file
-    backend_url = "https://555bd5fc-b652-4fea-9ad7-f48d697cb8d3.preview.emergentagent.com"
+    backend_url = "https://7df2e77d-798e-44be-b9ff-0eb61e396390.preview.emergentagent.com"
     print(f"Testing backend API at: {backend_url}")
     
     # Initialize tester
