@@ -100,8 +100,277 @@ class SEOToolAPITester:
             200
         )
     
+    def test_competitor_analysis(self, primary_url="https://example.com", competitor_urls=["https://example.org", "https://example.net"]):
+        """Test the competitor analysis endpoint"""
+        print(f"Testing competitor analysis for: {primary_url} vs {', '.join(competitor_urls)}")
+        return self.run_test(
+            "Competitor Analysis",
+            "POST",
+            "api/competitor-analysis",
+            200,
+            data={
+                "primary_url": primary_url,
+                "competitor_urls": competitor_urls
+            },
+            timeout=180  # Longer timeout for competitor analysis
+        )
+    
+    def test_seo_content_template(self, url="https://example.com", target_keywords=["seo", "content", "marketing"], content_type="article"):
+        """Test the SEO content template endpoint"""
+        print(f"Testing SEO content template for: {url} with keywords: {', '.join(target_keywords)}")
+        return self.run_test(
+            "SEO Content Template",
+            "POST",
+            "api/seo-content-template",
+            200,
+            data={
+                "url": url,
+                "target_keywords": target_keywords,
+                "content_type": content_type
+            },
+            timeout=120  # Longer timeout for content template generation
+        )
+    
+    def check_structured_ai_suggestions(self, analysis_result):
+        """Check if structured AI suggestions are working properly"""
+        print("\n🔍 Checking structured AI suggestions...")
+        
+        ai_suggestions = analysis_result.get("ai_suggestions", {})
+        
+        if not ai_suggestions:
+            print("❌ Failed - No AI suggestions found")
+            self.test_results["Structured AI Suggestions"] = {
+                "status": "FAILED",
+                "error": "No AI suggestions found"
+            }
+            return False
+        
+        # Check if it's a dictionary (structured format)
+        if not isinstance(ai_suggestions, dict):
+            print("❌ Failed - AI suggestions are not in structured format (not a dictionary)")
+            self.test_results["Structured AI Suggestions"] = {
+                "status": "FAILED",
+                "error": "AI suggestions are not in structured format"
+            }
+            return False
+        
+        # Check for required metrics
+        required_metrics = ["performance", "seo", "accessibility", "best_practices"]
+        missing_metrics = [metric for metric in required_metrics if metric not in ai_suggestions]
+        
+        if missing_metrics:
+            print(f"❌ Failed - Missing metrics in AI suggestions: {', '.join(missing_metrics)}")
+            self.test_results["Structured AI Suggestions"] = {
+                "status": "FAILED",
+                "error": f"Missing metrics: {', '.join(missing_metrics)}"
+            }
+            return False
+        
+        # Check structure of each metric
+        valid_metrics = 0
+        for metric in required_metrics:
+            metric_data = ai_suggestions.get(metric, {})
+            if not isinstance(metric_data, dict):
+                print(f"❌ Metric '{metric}' is not properly structured")
+                continue
+                
+            # Check for required fields in each metric
+            if "suggestions" in metric_data and "priority" in metric_data and "issues" in metric_data:
+                valid_metrics += 1
+                print(f"✅ Metric '{metric}' is properly structured")
+                # Print a sample suggestion
+                if metric_data.get("suggestions"):
+                    print(f"  Sample suggestion: {metric_data['suggestions'][0][:100]}...")
+                print(f"  Priority: {metric_data.get('priority', 'unknown')}")
+                print(f"  Issues count: {len(metric_data.get('issues', []))}")
+            else:
+                print(f"❌ Metric '{metric}' is missing required fields")
+        
+        if valid_metrics == len(required_metrics):
+            print("✅ Passed - All metrics are properly structured")
+            self.tests_passed += 1
+            self.test_results["Structured AI Suggestions"] = {
+                "status": "PASSED",
+                "details": f"All {len(required_metrics)} metrics are properly structured"
+            }
+            return True
+        else:
+            print(f"❌ Failed - Only {valid_metrics}/{len(required_metrics)} metrics are properly structured")
+            self.test_results["Structured AI Suggestions"] = {
+                "status": "FAILED",
+                "error": f"Only {valid_metrics}/{len(required_metrics)} metrics are properly structured"
+            }
+            return False
+    
+    def check_competitor_analysis(self, result):
+        """Check if competitor analysis results are valid"""
+        print("\n🔍 Checking competitor analysis results...")
+        
+        if not result:
+            print("❌ Failed - No competitor analysis results found")
+            self.test_results["Competitor Analysis Results"] = {
+                "status": "FAILED",
+                "error": "No competitor analysis results found"
+            }
+            return False
+        
+        # Check for required fields
+        required_fields = ["primary_url", "competitor_data", "comparison_insights", "competitive_keywords", "content_gaps"]
+        missing_fields = [field for field in required_fields if field not in result]
+        
+        if missing_fields:
+            print(f"❌ Failed - Missing fields in competitor analysis: {', '.join(missing_fields)}")
+            self.test_results["Competitor Analysis Results"] = {
+                "status": "FAILED",
+                "error": f"Missing fields: {', '.join(missing_fields)}"
+            }
+            return False
+        
+        # Check competitor data
+        competitor_data = result.get("competitor_data", [])
+        if not competitor_data:
+            print("❌ Failed - No competitor data found")
+            self.test_results["Competitor Analysis Results"] = {
+                "status": "FAILED",
+                "error": "No competitor data found"
+            }
+            return False
+        
+        print(f"✅ Found data for {len(competitor_data)} competitors")
+        
+        # Check comparison insights
+        comparison_insights = result.get("comparison_insights", {})
+        if not comparison_insights or not comparison_insights.get("insights"):
+            print("❌ Failed - No comparison insights found")
+            self.test_results["Competitor Analysis Results"] = {
+                "status": "FAILED",
+                "error": "No comparison insights found"
+            }
+            return False
+        
+        print(f"✅ Found {len(comparison_insights.get('insights', []))} comparison insights")
+        if comparison_insights.get("insights"):
+            print(f"  Sample insight: {comparison_insights['insights'][0][:100]}...")
+        
+        # Check competitive keywords
+        competitive_keywords = result.get("competitive_keywords", [])
+        if not competitive_keywords:
+            print("⚠️ Warning - No competitive keywords found")
+        else:
+            print(f"✅ Found {len(competitive_keywords)} competitive keywords")
+            if competitive_keywords:
+                print(f"  Sample keywords: {', '.join(competitive_keywords[:5])}")
+        
+        # Check content gaps
+        content_gaps = result.get("content_gaps", [])
+        if not content_gaps:
+            print("⚠️ Warning - No content gaps found")
+        else:
+            print(f"✅ Found {len(content_gaps)} content gaps")
+            if content_gaps:
+                print(f"  Sample content gap: {content_gaps[0][:100]}...")
+        
+        # Overall check
+        if comparison_insights.get("insights") and competitor_data:
+            print("✅ Passed - Competitor analysis generated successfully")
+            self.tests_passed += 1
+            self.test_results["Competitor Analysis Results"] = {
+                "status": "PASSED",
+                "details": f"Analysis includes {len(competitor_data)} competitors and {len(comparison_insights.get('insights', []))} insights"
+            }
+            return True
+        else:
+            print("❌ Failed - Competitor analysis incomplete")
+            self.test_results["Competitor Analysis Results"] = {
+                "status": "FAILED",
+                "error": "Competitor analysis incomplete or missing key components"
+            }
+            return False
+    
+    def check_seo_content_template(self, result):
+        """Check if SEO content template results are valid"""
+        print("\n🔍 Checking SEO content template results...")
+        
+        if not result:
+            print("❌ Failed - No SEO content template results found")
+            self.test_results["SEO Content Template Results"] = {
+                "status": "FAILED",
+                "error": "No SEO content template results found"
+            }
+            return False
+        
+        # Check for required fields
+        required_fields = ["url", "content_template", "keyword_strategy", "content_outline"]
+        missing_fields = [field for field in required_fields if field not in result]
+        
+        if missing_fields:
+            print(f"❌ Failed - Missing fields in SEO content template: {', '.join(missing_fields)}")
+            self.test_results["SEO Content Template Results"] = {
+                "status": "FAILED",
+                "error": f"Missing fields: {', '.join(missing_fields)}"
+            }
+            return False
+        
+        # Check content template
+        content_template = result.get("content_template", {})
+        if not content_template or not content_template.get("template"):
+            print("❌ Failed - No content template found")
+            self.test_results["SEO Content Template Results"] = {
+                "status": "FAILED",
+                "error": "No content template found"
+            }
+            return False
+        
+        print("✅ Content template generated")
+        print(f"  Template preview: {content_template.get('template', '')[:100]}...")
+        
+        # Check keyword strategy
+        keyword_strategy = result.get("keyword_strategy", {})
+        if not keyword_strategy or not keyword_strategy.get("strategy"):
+            print("❌ Failed - No keyword strategy found")
+            self.test_results["SEO Content Template Results"] = {
+                "status": "FAILED",
+                "error": "No keyword strategy found"
+            }
+            return False
+        
+        print("✅ Keyword strategy generated")
+        print(f"  Strategy preview: {keyword_strategy.get('strategy', '')[:100]}...")
+        
+        # Check content outline
+        content_outline = result.get("content_outline", {})
+        if not content_outline or not content_outline.get("outline"):
+            print("❌ Failed - No content outline found")
+            self.test_results["SEO Content Template Results"] = {
+                "status": "FAILED",
+                "error": "No content outline found"
+            }
+            return False
+        
+        print("✅ Content outline generated")
+        print(f"  Outline preview: {content_outline.get('outline', '')[:100]}...")
+        
+        # Overall check
+        if (content_template.get("template") and 
+            keyword_strategy.get("strategy") and 
+            content_outline.get("outline")):
+            print("✅ Passed - SEO content template generated successfully")
+            self.tests_passed += 1
+            self.test_results["SEO Content Template Results"] = {
+                "status": "PASSED",
+                "details": "Template, keyword strategy, and content outline all generated"
+            }
+            return True
+        else:
+            print("❌ Failed - SEO content template incomplete")
+            self.test_results["SEO Content Template Results"] = {
+                "status": "FAILED",
+                "error": "SEO content template incomplete or missing key components"
+            }
+            return False
+    
     def check_ai_suggestions(self, analysis_result):
-        """Check if AI suggestions are working properly"""
+        """Check if AI suggestions are working properly (legacy method)"""
         print("\n🔍 Checking AI suggestions...")
         
         ai_suggestions = analysis_result.get("ai_suggestions", "")
@@ -114,16 +383,20 @@ class SEOToolAPITester:
             }
             return False
             
-        if "Gemini API key not configured" in ai_suggestions:
-            print("❌ Failed - Gemini API key issue: " + ai_suggestions)
+        if isinstance(ai_suggestions, dict):
+            print("✅ AI suggestions are in structured format - using structured checker instead")
+            return self.check_structured_ai_suggestions(analysis_result)
+            
+        if "Gemini API key not configured" in str(ai_suggestions):
+            print("❌ Failed - Gemini API key issue: " + str(ai_suggestions))
             self.test_results["AI Suggestions"] = {
                 "status": "FAILED",
                 "error": "Gemini API key not configured"
             }
             return False
             
-        if "AI suggestions unavailable" in ai_suggestions:
-            print("❌ Failed - AI suggestions unavailable: " + ai_suggestions)
+        if "AI suggestions unavailable" in str(ai_suggestions):
+            print("❌ Failed - AI suggestions unavailable: " + str(ai_suggestions))
             self.test_results["AI Suggestions"] = {
                 "status": "FAILED",
                 "error": ai_suggestions
@@ -131,9 +404,9 @@ class SEOToolAPITester:
             return False
             
         # Check if it looks like actual AI-generated content
-        if len(ai_suggestions) > 100:
+        if len(str(ai_suggestions)) > 100:
             print("✅ Passed - AI suggestions generated successfully")
-            print(f"AI Suggestions preview: {ai_suggestions[:100]}...")
+            print(f"AI Suggestions preview: {str(ai_suggestions)[:100]}...")
             self.tests_passed += 1
             self.test_results["AI Suggestions"] = {
                 "status": "PASSED"
@@ -206,6 +479,51 @@ class SEOToolAPITester:
             }
             return False
     
+    def check_keywords_and_backlinks(self, analysis_result):
+        """Check if keywords and backlinks analysis is working properly"""
+        print("\n🔍 Checking keywords and backlinks analysis...")
+        
+        keywords = analysis_result.get("keywords", [])
+        backlinks = analysis_result.get("backlinks", [])
+        
+        if not keywords:
+            print("❌ Failed - No keywords found")
+            self.test_results["Keywords Analysis"] = {
+                "status": "FAILED",
+                "error": "No keywords found"
+            }
+            keywords_success = False
+        else:
+            print(f"✅ Found {len(keywords)} keywords")
+            if keywords:
+                print(f"  Sample keywords: {', '.join(keywords[:5])}")
+            self.tests_passed += 1
+            self.test_results["Keywords Analysis"] = {
+                "status": "PASSED",
+                "details": f"Found {len(keywords)} keywords"
+            }
+            keywords_success = True
+        
+        if not backlinks:
+            print("❌ Failed - No backlinks found")
+            self.test_results["Backlinks Analysis"] = {
+                "status": "FAILED",
+                "error": "No backlinks found"
+            }
+            backlinks_success = False
+        else:
+            print(f"✅ Found {len(backlinks)} backlinks")
+            if backlinks:
+                print(f"  Sample backlinks: {backlinks[0]}")
+            self.tests_passed += 1
+            self.test_results["Backlinks Analysis"] = {
+                "status": "PASSED",
+                "details": f"Found {len(backlinks)} backlinks"
+            }
+            backlinks_success = True
+        
+        return keywords_success and backlinks_success
+    
     def check_performance(self, start_time, end_time):
         """Check if the analysis completed in a reasonable time"""
         print("\n🔍 Checking performance...")
@@ -259,19 +577,24 @@ def main():
     success, analyses = tester.test_get_analyses()
     
     # Test analyze endpoint with example.com
+    print("\n===== Testing Main Analysis Endpoint =====")
     start_time = time.time()
     success, analysis_result = tester.test_analyze_website()
     end_time = time.time()
     
     # Check if analysis was successful
     if success and analysis_result:
-        # Check if AI suggestions are working
+        # Check if structured AI suggestions are working
         tester.tests_run += 1
-        tester.check_ai_suggestions(analysis_result)
+        tester.check_structured_ai_suggestions(analysis_result)
         
         # Check if screenshots are being generated
         tester.tests_run += 1
         tester.check_screenshots(analysis_result)
+        
+        # Check keywords and backlinks analysis
+        tester.tests_run += 1
+        tester.check_keywords_and_backlinks(analysis_result)
         
         # Check performance
         tester.tests_run += 1
@@ -284,6 +607,40 @@ def main():
     else:
         print("\n❌ Analysis failed - Cannot perform additional checks")
     
+    # Test competitor analysis endpoint
+    print("\n===== Testing Competitor Analysis Endpoint =====")
+    start_time = time.time()
+    success, competitor_result = tester.test_competitor_analysis()
+    end_time = time.time()
+    
+    if success and competitor_result:
+        # Check competitor analysis results
+        tester.tests_run += 1
+        tester.check_competitor_analysis(competitor_result)
+        
+        # Check performance
+        tester.tests_run += 1
+        tester.check_performance(start_time, end_time)
+    else:
+        print("\n❌ Competitor analysis failed - Cannot perform additional checks")
+    
+    # Test SEO content template endpoint
+    print("\n===== Testing SEO Content Template Endpoint =====")
+    start_time = time.time()
+    success, template_result = tester.test_seo_content_template()
+    end_time = time.time()
+    
+    if success and template_result:
+        # Check SEO content template results
+        tester.tests_run += 1
+        tester.check_seo_content_template(template_result)
+        
+        # Check performance
+        tester.tests_run += 1
+        tester.check_performance(start_time, end_time)
+    else:
+        print("\n❌ SEO content template failed - Cannot perform additional checks")
+    
     # Print summary
     tester.print_summary()
     
@@ -294,7 +651,9 @@ def main():
             "tests_run": tester.tests_run,
             "tests_passed": tester.tests_passed,
             "results": tester.test_results,
-            "analysis_sample": analysis_result if success else None
+            "analysis_sample": analysis_result if success else None,
+            "competitor_sample": competitor_result if success else None,
+            "template_sample": template_result if success else None
         }, f, indent=2, default=str)
     
     return 0 if tester.tests_passed == tester.tests_run else 1
